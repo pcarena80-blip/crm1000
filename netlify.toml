@@ -9,11 +9,13 @@
   from = "/api/*"
   to = "/api/:splat"
   status = 200
+  headers = {Access-Control-Allow-Origin = "*"}
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+  force = true
 
 [dev]
   command = "npm run dev"
