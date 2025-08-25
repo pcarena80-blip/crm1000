@@ -21,7 +21,7 @@ const io = new Server(server, {
   }
 });
 
-const PORT = process.env.SERVER_PORT || 3001;
+const PORT = process.env.PORT || process.env.SERVER_PORT || 3001;
 
 // Initialize OpenAI client only if API key is available
 let openai: OpenAI | null = null;
@@ -39,6 +39,7 @@ if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
 
 // Debug: Log all environment variables
 console.log("🔍 Environment variables loaded:");
+console.log("PORT:", process.env.PORT);
 console.log("SERVER_PORT:", process.env.SERVER_PORT);
 console.log("GOOGLE_GENERATIVE_AI_API_KEY:", process.env.GOOGLE_GENERATIVE_AI_API_KEY ? "SET" : "NOT SET");
 console.log("OPENAI_API_KEY:", process.env.OPENAI_API_KEY ? "SET" : "NOT SET");
