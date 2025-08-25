@@ -2,11 +2,12 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  base: '/',
   server: {
     host: "::",
     port: Number(process.env.VITE_PORT) || 5173,
-    proxy: {
+    proxy: command === 'serve' ? {
       "/api": {
         target: "http://localhost:3001",
         changeOrigin: true,
@@ -23,7 +24,7 @@ export default defineConfig({
           });
         },
       },
-    },
+    } : {},
   },
   plugins: [react()],
   resolve: {
@@ -31,4 +32,14 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-});
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['react-router-dom'],
+        },
+      },
+    },
+  },
+}));

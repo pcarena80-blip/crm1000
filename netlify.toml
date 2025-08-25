@@ -5,17 +5,33 @@
 [build.environment]
   NODE_VERSION = "18"
 
-[[redirects]]
-  from = "/api/*"
-  to = "/api/:splat"
-  status = 200
-  headers = {Access-Control-Allow-Origin = "*"}
-
+# Handle all routes for React Router SPA
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-  force = true
+
+# Handle API routes
+[[redirects]]
+  from = "/api/*"
+  to = "/api/:splat"
+  status = 200
+
+# Force all routes to index.html for SPA
+[[redirects]]
+  from = "/signup"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/login"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/dashboard"
+  to = "/index.html"
+  status = 200
 
 [dev]
   command = "npm run dev"
