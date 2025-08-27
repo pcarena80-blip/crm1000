@@ -6,6 +6,11 @@
 [build.environment]
   NODE_VERSION = "18"
 
+# ✅ Functions configuration
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
 # ✅ API routes - redirect to Netlify functions (MUST come FIRST)
 [[redirects]]
   from = "/api/*"
