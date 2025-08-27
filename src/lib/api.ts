@@ -1,4 +1,4 @@
-// API helper for Netlify Functions
+// API helper for Vercel API Routes
 
 // Helper function to determine the correct API URL based on environment
 const getApiUrl = (endpoint: string): string => {
@@ -10,9 +10,8 @@ const getApiUrl = (endpoint: string): string => {
     return `/${cleanEndpoint}`;
   }
   
-  // In production (Netlify), use the API path without leading slash
-  // This matches the redirect pattern in netlify.toml
-  return cleanEndpoint;
+  // In production (Vercel), use the API routes
+  return `/${cleanEndpoint}`;
 };
 
 // Generic fetch wrapper with proper URL handling
