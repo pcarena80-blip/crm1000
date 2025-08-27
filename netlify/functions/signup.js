@@ -1,15 +1,37 @@
-export async function handler(event, context) {
-  const { username, password } = JSON.parse(event.body);
+exports.handler = async (event, context) => {
+  try {
+    const { username, password } = JSON.parse(event.body || '{}');
 
-  if (username && password) {
+    if (username && password) {
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type',
+        },
+        body: JSON.stringify({ success: true, message: "Signup successful" }),
+      };
+    }
+
     return {
-      statusCode: 200,
-      body: JSON.stringify({ success: true, message: "Signup successful" }),
+      statusCode: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+      body: JSON.stringify({ success: false, message: "Invalid data" }),
+    };
+  } catch (error) {
+    return {
+      statusCode: 400,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+      body: JSON.stringify({ success: false, message: "Invalid request body" }),
     };
   }
-
-  return {
-    statusCode: 400,
-    body: JSON.stringify({ success: false, message: "Invalid data" }),
-  };
-}
+};
