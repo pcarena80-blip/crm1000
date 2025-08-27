@@ -1,50 +1,43 @@
 // Netlify serverless function for user login
-export async function handler(event, context) {
+exports.handler = async function (event, context) {
   try {
     // Only allow POST method
-    if (event.httpMethod !== 'POST') {
+    if (event.httpMethod !== "POST") {
       return {
         statusCode: 405,
-        body: JSON.stringify({ error: 'Method not allowed' }),
+        body: JSON.stringify({ error: "Method not allowed" }),
       };
     }
 
     // Parse request body
-    const { email, password } = JSON.parse(event.body || '{}');
-    
+    const { email, password } = JSON.parse(event.body || "{}");
+
     // Validation
     if (!email || !password) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: 'Email and password are required' }),
+        body: JSON.stringify({ error: "Email and password are required" }),
       };
     }
-    
-    // In a real application, you would validate against a database
-    // For this example, we'll just return a success response
-    // In production, you would:
-    // 1. Check if the user exists in your database
-    // 2. Verify the password (using proper hashing)
-    // 3. Generate a JWT token or session
-    
-    // Mock successful login for demonstration
+
+    // Mock successful login
     return {
       statusCode: 200,
       body: JSON.stringify({
         success: true,
-        message: 'Login successful!',
+        message: "Login successful!",
         user: {
-          id: '1', // This would be the actual user ID from your database
-          name: 'User', // This would be the actual user name
-          email: email
-        }
+          id: "1",
+          name: "User",
+          email: email,
+        },
       }),
     };
   } catch (error) {
-    console.error('Login error:', error);
+    console.error("Login error:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Internal server error during login' }),
+      body: JSON.stringify({ error: "Internal server error during login" }),
     };
   }
-}
+};
