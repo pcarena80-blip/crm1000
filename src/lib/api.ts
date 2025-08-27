@@ -23,7 +23,13 @@ export const apiRequest = async (
   try {
     const url = getApiUrl(endpoint);
     console.log('API request to:', url); // Debug log
+    console.log('Request options:', options); // Debug log
+    console.log('Request method:', options.method); // Debug log
+    
     const response = await fetch(url, options);
+    
+    console.log('Response status:', response.status); // Debug log
+    console.log('Response headers:', response.headers); // Debug log
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -39,11 +45,14 @@ export const apiRequest = async (
 
 // Common API functions
 export const login = async (email: string, password: string) => {
-  return apiRequest('api/login', {
+  const requestOptions = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
-  });
+  };
+  
+  console.log('Login request options:', requestOptions); // Debug log
+  return apiRequest('api/login', requestOptions);
 };
 
 export const register = async (name: string, email: string, password: string) => {
