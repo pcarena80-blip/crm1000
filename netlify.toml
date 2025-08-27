@@ -8,19 +8,13 @@
 [functions]
   directory = "netlify/functions"
 
-# Handle all routes for React Router SPA
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
-# Handle API routes - redirect to Netlify Functions
+# ✅ API routes (functions must come FIRST)
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
 
-# Force all routes to index.html for SPA
+# ✅ SPA routes (React Router)
 [[redirects]]
   from = "/signup"
   to = "/index.html"
@@ -33,6 +27,12 @@
 
 [[redirects]]
   from = "/dashboard"
+  to = "/index.html"
+  status = 200
+
+# ✅ Catch-all for all other React Router paths
+[[redirects]]
+  from = "/*"
   to = "/index.html"
   status = 200
 
