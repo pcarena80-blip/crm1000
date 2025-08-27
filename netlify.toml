@@ -6,16 +6,18 @@
 [build.environment]
   NODE_VERSION = "18"
 
-# ✅ Functions configuration
+# ✅ Functions configuration - more explicit
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
+  external_node_modules = []
 
 # ✅ API routes - redirect to Netlify functions (MUST come FIRST)
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
+  force = true
 
 # ✅ SPA routes (React Router)
 [[redirects]]
