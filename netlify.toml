@@ -8,38 +8,8 @@
 
 # ✅ API routes - redirect to Netlify functions (MUST come FIRST)
 [[redirects]]
-  from = "/api/test"
-  to = "/.netlify/functions/test"
-  status = 200
-
-[[redirects]]
-  from = "/api/login"
-  to = "/.netlify/functions/login"
-  status = 200
-
-[[redirects]]
-  from = "/api/logout"
-  to = "/.netlify/functions/logout"
-  status = 200
-
-[[redirects]]
-  from = "/api/user/*"
-  to = "/.netlify/functions/user"
-  status = 200
-
-[[redirects]]
-  from = "/api/register"
-  to = "/.netlify/functions/register"
-  status = 200
-
-[[redirects]]
-  from = "/api/signup"
-  to = "/.netlify/functions/signup"
-  status = 200
-
-[[redirects]]
-  from = "/api/chat"
-  to = "/.netlify/functions/chat"
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
   status = 200
 
 # ✅ SPA routes (React Router)
