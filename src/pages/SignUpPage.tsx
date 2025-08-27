@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { MessageSquare, ArrowLeft, Shield, Users, Building } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { register as apiRegister } from "@/lib/api";
 
 const roles = [
   {
@@ -120,21 +121,14 @@ export const SignUpPage = () => {
     setIsLoading(true);
     
     try {
-      const response = await fetch('/api/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: formData.fullName,
-          email: formData.email,
-          password: formData.password
-        }),
-      });
+      // Use the API helper function
+      const data = await apiRegister(
+        formData.fullName,
+        formData.email,
+        formData.password
+      );
       
-      const data = await response.json();
-      
-      if (response.ok && data.success) {
+      if (data.success) {
         toast({
           title: "Registration Successful!",
           description: data.message || "Account created successfully. Please login.",

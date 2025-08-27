@@ -10,6 +10,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 import { MessageSquare, Mail, Lock, Eye, EyeOff, Smartphone, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { login as apiLogin } from "@/lib/api";
 
 export const LoginPage = () => {
   const { toast } = useToast();
@@ -65,35 +66,12 @@ export const LoginPage = () => {
     try {
       console.log('Attempting login with:', { email: loginData.email, password: loginData.password });
       
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(loginData),
-      });
+      // Use the API helper function
+      const data = await apiLogin(loginData.email, loginData.password);
       
-      console.log('Login response status:', response.status);
-      console.log('Login response headers:', response.headers);
-      
-      // Safely parse JSON only when the response is JSON
-      const contentType = response.headers.get('content-type') || '';
-      let data: any = null;
-      try {
-        if (contentType.includes('application/json')) {
-          data = await response.json();
-        } else {
-          const text = await response.text();
-          // Create a normalized error shape for non-JSON responses
-          data = { success: false, error: text };
-        }
-      } catch (parseError) {
-        console.error('Failed to parse response as JSON:', parseError);
-        data = { success: false, error: 'Unexpected server response' };
-      }
       console.log('Login response data:', data);
       
-      if (response.ok && data?.success) {
+      if (data?.success) {
         console.log('Login successful, user data:', data.user);
         
         // Use the AuthContext login function
@@ -107,9 +85,7 @@ export const LoginPage = () => {
         // Redirect to dashboard
         navigate("/dashboard");
       } else {
-        const description = data?.error || (response.status >= 500
-          ? 'Server error. Please ensure the backend is running.'
-          : 'Invalid email or password. Please try again.');
+        const description = data?.error || 'Invalid email or password. Please try again.';
         console.error('Login failed:', description);
         toast({
           title: "Login Failed",
