@@ -6,29 +6,13 @@
 [build.environment]
   NODE_VERSION = "18"
 
-# Handle all routes for React Router SPA
+# ✅ API routes (functions must come FIRST)
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
   status = 200
 
-# Handle API routes - redirect to Netlify functions
-[[redirects]]
-  from = "/api/login"
-  to = "/.netlify/functions/login"
-  status = 200
-
-[[redirects]]
-  from = "/api/logout"
-  to = "/.netlify/functions/logout"
-  status = 200
-
-[[redirects]]
-  from = "/api/user/*"
-  to = "/.netlify/functions/user"
-  status = 200
-
-# Force all routes to index.html for SPA
+# ✅ SPA routes (React Router)
 [[redirects]]
   from = "/signup"
   to = "/index.html"
@@ -41,6 +25,12 @@
 
 [[redirects]]
   from = "/dashboard"
+  to = "/index.html"
+  status = 200
+
+# ✅ Catch-all for all other React Router paths
+[[redirects]]
+  from = "/*"
   to = "/index.html"
   status = 200
 

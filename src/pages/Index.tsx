@@ -1489,11 +1489,41 @@ const Index = () => {
               {/* Chat List Header with Tabs */}
               <div className="p-3 border-b bg-white border-gray-200">
                 <div className="flex space-x-1 mb-3">
-                  <button className="px-3 py-2 text-sm font-medium text-green-600 bg-green-50 rounded-lg">
+                  <button className="px-3 py-2 text-sm font-medium text-blue-600 bg-green-50 rounded-lg">
                     General {chatMessages.filter(m => !m.readBy?.includes(currentUser?.id?.toString())).length}
                   </button>
                   <button className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 rounded-lg">
-                    Archive 0
+                    
+                  </button>
+                  <button 
+                    onClick={() => {
+                      // Manual refresh of users
+                      const loadUsers = async () => {
+                        try {
+                          const response = await fetch('/api/register.json');
+                          if (response.ok) {
+                            const usersData = await response.json();
+                            setUsers(usersData);
+                            const otherUsers = usersData.filter((userItem: any) => 
+                              userItem.id.toString() !== user?.id?.toString()
+                            );
+                            setSortedUsers(otherUsers);
+                            toast({
+                              title: "Users Refreshed",
+                              description: `Found ${usersData.length} users`,
+                              variant: "default"
+                            });
+                          }
+                        } catch (error) {
+                          console.error('Error refreshing users:', error);
+                        }
+                      };
+                      loadUsers();
+                    }}
+                    className="px-3 py-2 text-sm font-medium text-green-600 hover:text-blue-700 rounded-lg border border-blue-200 hover:border-blue-300"
+                  >
+                    <RefreshCw className="w-4 h-4 inline mr-1" />
+                    Refresh
                   </button>
                   <button 
                     onClick={() => {

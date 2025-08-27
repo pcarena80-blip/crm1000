@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Brain, Send, CheckCircle, Paperclip, Smile, Bot } from "lucide-react";
 import { useState } from "react";
+import { sendChatMessage } from "@/lib/api";
 
 const AIChat = () => {
   const [messages, setMessages] = useState<Array<{ role: 'user' | 'assistant', content: string }>>([]);
@@ -17,37 +18,22 @@ const AIChat = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [...messages, userMessage],
-          model: selectedModel
-        }),
-      });
+      // Create AI message placeholder
+      const aiMessage = { role: 'assistant' as const, content: '' };
+      setMessages(prev => [...prev, aiMessage]);
 
-      if (response.ok) {
-        // Create AI message placeholder
-        const aiMessage = { role: 'assistant' as const, content: '' };
-        setMessages(prev => [...prev, aiMessage]);
-
-        try {
-          // Get the response text directly instead of streaming
-          const responseData = await response.json();
+      try {
+        // Use the API helper function
+        const responseData = await sendChatMessage([...messages, userMessage], selectedModel);
+        
+        // Update the AI message with the response
+        aiMessage.content = responseData.response || 'No response content received.';
+        setMessages(prev => [...prev.slice(0, -1), { ...aiMessage }]);
           
-          // Update the AI message with the response
-          aiMessage.content = responseData.content || 'No response content received.';
-          setMessages(prev => [...prev.slice(0, -1), { ...aiMessage }]);
-          
-        } catch (e) {
-          console.error('Error parsing response:', e);
-          aiMessage.content = 'Sorry, I encountered an error processing the response.';
-          setMessages(prev => [...prev.slice(0, -1), { ...aiMessage }]);
-        }
-      } else {
-        throw new Error('Failed to get response');
+      } catch (e) {
+        console.error('Error processing chat response:', e);
+        aiMessage.content = 'Sorry, I encountered an error processing the response.';
+        setMessages(prev => [...prev.slice(0, -1), { ...aiMessage }]);
       }
     } catch (error) {
       console.error('Error sending message:', error);
