@@ -4,13 +4,30 @@ const users = [
 ];
 
 exports.handler = async (event, context) => {
-  console.log('Login function called with:', event);
+  console.log('=== LOGIN FUNCTION CALLED ===');
+  console.log('Event:', JSON.stringify(event, null, 2));
+  console.log('HTTP Method:', event.httpMethod);
+  console.log('Path:', event.path);
+  console.log('Headers:', JSON.stringify(event.headers, null, 2));
+  console.log('Body:', event.body);
+  console.log('=============================');
   
   // Only allow POST requests
   if (event.httpMethod !== 'POST') {
+    console.log('Method not allowed:', event.httpMethod);
     return {
       statusCode: 405,
-      body: JSON.stringify({ error: 'Method not allowed' })
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST',
+      },
+      body: JSON.stringify({ 
+        error: 'Method not allowed',
+        receivedMethod: event.httpMethod,
+        allowedMethod: 'POST'
+      })
     };
   }
 
