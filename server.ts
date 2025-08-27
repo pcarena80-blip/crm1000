@@ -768,6 +768,24 @@ const storePassword = (password: string) => {
   return password; // Store as plain text
 };
 
+// Repair user data to ensure consistency
+const repairUserData = () => {
+  try {
+    // Ensure all users have proper role field
+    users.forEach(user => {
+      if (!user.role) {
+        user.role = "User";
+      }
+    });
+    
+    // Save repaired data
+    saveData();
+    console.log('🔧 User data repaired and saved');
+  } catch (error) {
+    console.error('Error repairing user data:', error);
+  }
+};
+
 // Authentication endpoints
 app.post('/api/register', (req, res) => {
   try {
@@ -788,31 +806,65 @@ app.post('/api/register', (req, res) => {
       return res.status(400).json({ error: 'Please enter a valid email address' });
     }
     
-    const users = readRegisterFile();
+    // Check if email already exists in both in-memory and file
+    const existingUserInMemory = users.find(u => u.email === email);
+    const existingUserInFile = readRegisterFile().find(u => u.email === email);
     
-    // Check if email already exists
-    if (users.find((user: ParsedUser) => user.email === email)) {
+    if (existingUserInMemory || existingUserInFile) {
       return res.status(400).json({ error: 'Email already registered' });
     }
     
-    // Create new user
+    // Create new user with proper ID
+    const newUserId = Math.max(...users.map(u => parseInt(u.id)), ...readRegisterFile().map(u => u.id), 0) + 1;
+    
     const newUser = {
-      id: users.length + 1,
+      id: newUserId.toString(),
       name,
       email,
-      password: storePassword(password)
+      password: storePassword(password),
+      role: "User",
+      isOnline: false,
+      lastSeen: new Date()
     };
     
+    // Add to in-memory users array
     users.push(newUser);
     
-    if (writeRegisterFile(users)) {
-      console.log(`✅ New user registered: ${email}`);
+    // Save to file - use the updated users array directly
+    const fileUsers = users.map(u => ({
+      id: parseInt(u.id),
+      name: u.name,
+      email: u.email,
+      password: u.password,
+      role: u.role || "User"
+    }));
+    
+    if (writeRegisterFile(fileUsers)) {
+      console.log(`✅ New user registered: ${email} (ID: ${newUserId})`);
+      console.log(`💾 User saved to file. Total users: ${fileUsers.length}`);
+      
+      // Broadcast new user to all connected clients via Socket.IO
+      io.emit('newUserRegistered', {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        isOnline: false,
+        lastSeen: newUser.lastSeen
+      });
+      
+      // Save all data to ensure consistency
+      saveData();
+      
       res.status(201).json({ 
         success: true, 
         message: 'Registration successful! Please login.',
         user: { id: newUser.id, name: newUser.name, email: newUser.email }
       });
     } else {
+      // Rollback in-memory addition if file save fails
+      users.pop();
+      console.error('❌ Failed to write user to file');
       res.status(500).json({ error: 'Failed to save user data' });
     }
     
@@ -1083,6 +1135,30 @@ process.on('SIGTERM', () => {
   console.log('💾 All data saved before shutdown');
   process.exit(0);
 });
+
+// Debug endpoint to test file writing
+app.post('/api/debug-write', (req, res) => {
+  try {
+    const testUsers = [
+      { id: 1, name: "Test User", email: "test@test.com", password: "password123", role: "User" },
+      { id: 2, name: "Test User 2", email: "test2@test.com", password: "password123", role: "User" }
+    ];
+    
+    const result = writeRegisterFile(testUsers);
+    console.log('Debug write result:', result);
+    
+    res.json({ 
+      success: result, 
+      message: result ? 'File written successfully' : 'File write failed',
+      users: testUsers
+    });
+  } catch (error) {
+    console.error('Debug write error:', error);
+    res.status(500).json({ error: 'Debug write failed' });
+  }
+});
+
+// Manual repair endpoint for admin use
 
 // Start server
 server.listen(PORT, () => {

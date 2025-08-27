@@ -52,6 +52,14 @@ import {
   Key,
   Phone,
   Mic,
+  Edit,
+  Trash2,
+  Forward,
+  Calendar,
+  ChevronDown,
+  ChevronRight,
+  Download,
+  Globe,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -159,6 +167,132 @@ const Index = () => {
   // Message deduplication - track processed message IDs
   const [processedMessageIds, setProcessedMessageIds] = useState<Set<string>>(new Set());
 
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    visible: boolean;
+    x: number;
+    y: number;
+    message: any;
+  } | null>(null);
+  const [editingMessage, setEditingMessage] = useState<{
+    id: string;
+    content: string;
+  } | null>(null);
+
+  // Context menu functions
+  const handleMessageRightClick = (e: React.MouseEvent, message: any) => {
+    e.preventDefault();
+    setContextMenu({
+      visible: true,
+      x: e.clientX,
+      y: e.clientY,
+      message
+    });
+  };
+
+  const closeContextMenu = () => {
+    setContextMenu(null);
+  };
+
+  const isMessageEditable = (message: any) => {
+    if (!message.timestamp) return false;
+    const messageTime = new Date(message.timestamp).getTime();
+    const currentTime = Date.now();
+    const oneMinute = 60 * 1000; // 60 seconds in milliseconds
+    return (currentTime - messageTime) <= oneMinute;
+  };
+
+  const handleEditMessage = (message: any) => {
+    setEditingMessage({
+      id: message.id,
+      content: message.content
+    });
+    closeContextMenu();
+  };
+
+  const handleDeleteMessage = async (message: any) => {
+    try {
+      // Mark message as deleted locally
+      setChatMessages(prev => prev.map(msg => 
+        msg.id === message.id ? { ...msg, deleted: true, content: 'This message was deleted' } : msg
+      ));
+      
+      // TODO: Send delete request to server
+      console.log('🗑️ Message deleted:', message.id);
+      
+      toast({
+        title: "Message Deleted",
+        description: "Message has been deleted",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete message",
+        variant: "destructive"
+      });
+    }
+    closeContextMenu();
+  };
+
+  const handleForwardMessage = (message: any) => {
+    // TODO: Implement forward functionality
+    console.log('📤 Forwarding message:', message.id);
+    toast({
+      title: "Forward Message",
+      description: "Forward functionality coming soon!",
+      variant: "default"
+    });
+    closeContextMenu();
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingMessage || !editingMessage.content.trim()) return;
+    
+    try {
+      // Update message locally
+      setChatMessages(prev => prev.map(msg => 
+        msg.id === editingMessage.id 
+          ? { ...msg, content: editingMessage.content.trim(), edited: true } : msg
+      ));
+      
+      // TODO: Send edit request to server
+      console.log('✏️ Message edited:', editingMessage.id);
+      
+      toast({
+        title: "Message Edited",
+        description: "Message has been updated",
+        variant: "default"
+      });
+    } catch (error) {
+      console.error('Error editing message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to edit message",
+        variant: "destructive"
+      });
+    }
+    
+    setEditingMessage(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessage(null);
+  };
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (contextMenu?.visible) {
+        closeContextMenu();
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [contextMenu?.visible]);
+
   // Function to sort users by last message time (WhatsApp-style) with rate limiting
   const sortUsersByLastMessage = useCallback(async () => {
     if (!user?.id) {
@@ -170,13 +304,6 @@ const Index = () => {
       console.log('❌ No users to sort');
       return;
     }
-    
-    // Rate limiting: prevent multiple calls within 2 seconds
-    if (sortUsersByLastMessage.lastCall && Date.now() - sortUsersByLastMessage.lastCall < 2000) {
-      console.log('🔄 Skipping sortUsersByLastMessage - rate limited');
-      return;
-    }
-    sortUsersByLastMessage.lastCall = Date.now();
     
     try {
       console.log('🔄 Sorting users by last message...');
@@ -296,9 +423,43 @@ const Index = () => {
   // Auto scroll for both chats
   useEffect(() => {
     if (messages.length > 0 || isTyping) {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages.length, isTyping]);
+
+  // Auto scroll for private chat messages - WhatsApp style
+  useEffect(() => {
+    if (chatMessages.length > 0) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        if (chatEndRef.current) {
+          chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+        // Also try to scroll the chat container directly
+        const chatContainer = document.querySelector('.overflow-y-auto');
+        if (chatContainer) {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+      }, 100);
+    }
+  }, [chatMessages.length]);
+
+  // Scroll to bottom when chat user changes (opening a new chat)
+  useEffect(() => {
+    if (selectedChatUser) {
+      // Small delay to ensure messages are loaded and DOM is updated
+      setTimeout(() => {
+        if (chatEndRef.current) {
+          chatEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+        // Also try to scroll the chat container directly
+        const chatContainer = document.querySelector('.overflow-y-auto');
+        if (chatContainer) {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+      }, 200);
+    }
+  }, [selectedChatUser]);
 
   // Load users for chat
   useEffect(() => {
@@ -365,9 +526,43 @@ const Index = () => {
       // Load existing messages
       loadChatMessages();
     }
-  }, [selectedChatUser, currentUser, socket, loadChatMessages]); // Added loadChatMessages dependency
+  }, [selectedChatUser, currentUser, socket]); // Removed loadChatMessages dependency
 
-
+  // Mark messages as read when chat is opened
+  useEffect(() => {
+    if (selectedChatUser && currentUser && socket && isConnected) {
+      const selfId = currentUser.id.toString();
+      const peerId = selectedChatUser.id.toString();
+      const chatId = [selfId, peerId].sort().join('-');
+      
+      // Mark all messages in this chat as read
+      const unreadMessages = chatMessages.filter(m => 
+        m.chatId === chatId && 
+        !m.readBy?.includes(selfId) &&
+        m.senderId !== selfId
+      );
+      
+      if (unreadMessages.length > 0) {
+        console.log('👁️ Marking messages as read:', unreadMessages.length);
+        
+        // Update local state to mark messages as read
+        setChatMessages(prev => prev.map(msg => 
+          msg.chatId === chatId && 
+          !msg.readBy?.includes(selfId) &&
+          msg.senderId !== selfId
+            ? { ...msg, readBy: [...(msg.readBy || []), selfId], status: 'read' }
+            : msg
+        ));
+        
+        // Send read status to server via socket
+        socket.emit('markRead', {
+          chatId,
+          messageIds: unreadMessages.map(m => m.id),
+          readerId: selfId
+        });
+      }
+    }
+  }, [selectedChatUser, currentUser, socket, isConnected, chatMessages]);
 
   // Chat functions
 
@@ -410,11 +605,6 @@ const Index = () => {
     };
     
     setChatMessages(prev => [...prev, tempMessage]);
-    
-    // Set timeout to remove temp message if not replaced within 10 seconds
-    setTimeout(() => {
-      setChatMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
-    }, 10000);
     
     // Clear input immediately for better UX
     setChatInput('');
@@ -500,7 +690,16 @@ const Index = () => {
   useEffect(() => {
     if (isAuthenticated && user) {
       const serverUrl = (import.meta as any).env?.VITE_SERVER_URL || 'http://localhost:3001';
-      const newSocket = io(serverUrl, { transports: ['websocket'] });
+      console.log('🔌 Connecting to Socket.IO server:', serverUrl);
+      
+      const newSocket = io(serverUrl, { 
+        transports: ['websocket', 'polling'], // Fallback to polling if WebSocket fails
+        timeout: 20000,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        forceNew: true
+      });
       
       // Store socket in state
       setSocket(newSocket);
@@ -511,115 +710,122 @@ const Index = () => {
         
         // Authenticate user with Socket.IO
         newSocket.emit('authenticate', user.id.toString());
+        console.log('🔐 Authenticating user:', user.id);
       });
       
-      newSocket.on('disconnect', () => {
-        console.log('🔌 Disconnected from Socket.IO server');
+      newSocket.on('connect_error', (error) => {
+        console.error('🔌 Socket connection error:', error);
+        setIsConnected(false);
+        toast({
+          title: "Connection Error",
+          description: "Failed to connect to chat server. Trying to reconnect...",
+          variant: "destructive"
+        });
+      });
+      
+      newSocket.on('disconnect', (reason) => {
+        console.log('🔌 Disconnected from Socket.IO server:', reason);
+        setIsConnected(false);
+        
+        if (reason === 'io server disconnect') {
+          // Server disconnected us, try to reconnect
+          newSocket.connect();
+        }
+      });
+      
+      newSocket.on('reconnect', (attemptNumber) => {
+        console.log('🔌 Reconnected to Socket.IO server after', attemptNumber, 'attempts');
+        setIsConnected(true);
+        
+        // Re-authenticate after reconnection
+        newSocket.emit('authenticate', user.id.toString());
+        
+        // Re-join current chat room if any
+        if (selectedChatUser && currentUser) {
+          const selfId = currentUser.id.toString();
+          const peerId = selectedChatUser.id.toString();
+          const chatId = [selfId, peerId].sort().join('-');
+          newSocket.emit('joinPrivateChat', chatId);
+        }
+      });
+      
+      newSocket.on('reconnect_error', (error) => {
+        console.error('🔌 Reconnection error:', error);
         setIsConnected(false);
       });
       
-                  // Listen for incoming messages
+      newSocket.on('reconnect_failed', () => {
+        console.error('🔌 Reconnection failed');
+        setIsConnected(false);
+        toast({
+          title: "Connection Failed",
+          description: "Unable to reconnect to chat server. Please refresh the page.",
+          variant: "destructive"
+        });
+      });
+      
+      // Listen for incoming messages
       const handleReceiveMessage = (message: any) => {
-        console.log('📨 Received message:', message);
+        console.log('📨 Received real-time message:', message);
         
-        // Check if we've already processed this message ID
-        if (processedMessageIds.has(message.id)) {
-          console.log('📨 Message ID already processed, skipping duplicate:', message.id);
+        // Skip if this is our own message (we already added it locally)
+        if (message.senderId === user.id.toString()) {
+          console.log('📨 Skipping own message in real-time handler');
           return;
         }
         
-        // Add message to the appropriate chat
-        if (message.chatId) {
-          const chatId = message.chatId;
-          const senderId = message.senderId;
-          const isOwnMessage = senderId === user.id.toString();
+        // Create message object for chatMessages state
+        const newMessage = {
+          id: message.id,
+          chatId: message.chatId,
+          senderId: message.senderId,
+          content: message.content,
+          timestamp: message.timestamp,
+          edited: false,
+          deleted: false,
+          status: 'received',
+          readBy: []
+        };
+        
+        // Update chatMessages state if this is for the currently selected chat
+        if (selectedChatUser) {
+          const selfId = user.id.toString();
+          const peerId = selectedChatUser.id.toString();
+          const currentChatId = [selfId, peerId].sort().join('-');
           
-          console.log('📨 Chat ID:', chatId);
-          console.log('📨 Sender ID:', senderId);
-          console.log('📨 Is own message:', isOwnMessage);
-          
-          // Create message object for chatMessages state
-          const newMessage = {
-            id: message.id,
-            chatId: message.chatId,
-            senderId: message.senderId,
-            content: message.content,
-            timestamp: message.timestamp,
-            edited: false,
-            deleted: false,
-            status: 'sent',
-            readBy: []
-          };
-          
-          // Update chatMessages state if this is for the currently selected chat
-          if (selectedChatUser) {
-            const selfId = user.id.toString();
-            const peerId = selectedChatUser.id.toString();
-            const currentChatId = [selfId, peerId].sort().join('-');
-            
-            if (chatId === currentChatId) {
+          if (message.chatId === currentChatId) {
+            console.log('📨 Adding real-time message to current chat');
+            setChatMessages(prev => {
               // Check if message already exists to prevent duplicates
-              setChatMessages(prev => {
-                // First check by ID (most reliable)
-                const messageExistsById = prev.some(msg => msg.id === newMessage.id);
-                if (messageExistsById) {
-                  console.log('📨 Message already exists by ID, skipping duplicate');
-                  return prev;
-                }
-                
-                // Also check by content + sender + timestamp to catch any other duplicates
-                const messageExistsByContent = prev.some(msg => 
-                  msg.content === newMessage.content && 
-                  msg.senderId === newMessage.senderId &&
-                  Math.abs(new Date(msg.timestamp).getTime() - new Date(newMessage.timestamp).getTime()) < 1000 // Within 1 second
-                );
-                if (messageExistsByContent) {
-                  console.log('📨 Message already exists by content, skipping duplicate');
-                  return prev;
-                }
-                
-                // Check if this is replacing a temporary message
-                const tempMessageIndex = prev.findIndex(msg => 
-                  msg.id.startsWith('temp-') && 
-                  msg.content === newMessage.content && 
-                  msg.senderId === newMessage.senderId
-                );
-                
-                if (tempMessageIndex !== -1) {
-                  console.log('📨 Replacing temporary message with real message');
-                  const newMessages = [...prev];
-                  newMessages[tempMessageIndex] = newMessage;
-                  return newMessages;
-                }
-                
-                // If no temp message found, add as new
-                console.log('📨 Adding new message to chat');
-                return [...prev, newMessage];
-              });
+              const messageExists = prev.some(msg => msg.id === newMessage.id);
+              if (messageExists) {
+                console.log('📨 Message already exists, skipping duplicate');
+                return prev;
+              }
               
-              // Update sorted users to reflect new message order
-              setTimeout(() => sortUsersByLastMessage(), 100);
-            }
+              // Add new message
+              return [...prev, newMessage];
+            });
+            
+            // Update sorted users to reflect new message order
+            setTimeout(() => sortUsersByLastMessage(), 100);
           }
+        }
 
-          if (!isOwnMessage) {
+        // Show toast notification for new messages (only if not in current chat)
+        if (selectedChatUser) {
+          const selfId = user.id.toString();
+          const peerId = selectedChatUser.id.toString();
+          const currentChatId = [selfId, peerId].sort().join('-');
+          
+          if (message.chatId !== currentChatId) {
+            const senderName = users.find(u => u.id.toString() === message.senderId)?.name || 'Unknown';
             toast({
               title: "New Message",
-              description: `You have a new message from ${users.find(u => u.id.toString() === senderId)?.name || 'Unknown'}`,
+              description: `New message from ${senderName}`,
               variant: "default"
             });
           }
-          
-          // Mark this message ID as processed
-          setProcessedMessageIds(prev => {
-            const newSet = new Set([...prev, message.id]);
-            // Keep only last 1000 message IDs to prevent memory issues
-            if (newSet.size > 1000) {
-              const ids = Array.from(newSet);
-              return new Set(ids.slice(-1000));
-            }
-            return newSet;
-          });
         }
       };
       
@@ -627,7 +833,7 @@ const Index = () => {
 
       // Listen for loading existing messages
       const handleLoadMessages = (messages: any) => {
-        console.log('📚 Loading existing messages:', messages);
+        console.log('📚 Loading existing messages:', messages.length);
         
         if (selectedChatUser) {
           const selfId = user.id.toString();
@@ -644,27 +850,82 @@ const Index = () => {
       // Listen for message delivery status
       const handleMessageDelivered = (data: any) => {
         console.log('✅ Message delivered:', data);
-        // You can update message status here if needed
+        
+        // Update message status to delivered
+        setChatMessages(prev => prev.map(msg => 
+          msg.id === data.messageId ? { ...msg, status: 'delivered' } : msg
+        ));
+      };
+      
+      // Listen for message read status
+      const handleMessagesRead = (data: any) => {
+        console.log('👁️ Messages read:', data);
+        
+        // Update message status to read
+        setChatMessages(prev => prev.map(msg => 
+          data.messageIds.includes(msg.id) ? { ...msg, status: 'read' } : msg
+        ));
+      };
+      
+      // Listen for new user registrations
+      const handleNewUserRegistered = (newUser: any) => {
+        console.log('👤 New user registered via Socket.IO:', newUser);
+        
+        // Add new user to users array
+        setUsers(prev => {
+          // Check if user already exists
+          const userExists = prev.some(u => u.id.toString() === newUser.id.toString());
+          if (userExists) {
+            console.log('👤 User already exists, skipping duplicate');
+            return prev;
+          }
+          
+          // Add new user
+          const updatedUsers = [...prev, newUser];
+          console.log('👥 Users updated with new user:', updatedUsers.length);
+          return updatedUsers;
+        });
+        
+        // Also update sortedUsers
+        setSortedUsers(prev => {
+          // Check if user already exists
+          const userExists = prev.some(u => u.id.toString() === newUser.id.toString());
+          if (userExists) {
+            return prev;
+          }
+          
+          // Add new user to sorted list
+          const updatedSortedUsers = [...prev, newUser];
+          console.log('👥 Sorted users updated with new user:', updatedSortedUsers.length);
+          return updatedSortedUsers;
+        });
+        
+        // Show toast notification
+        toast({
+          title: "New User Joined",
+          description: `${newUser.name} has joined the platform!`,
+          variant: "default"
+        });
       };
       
       newSocket.on('loadMessages', handleLoadMessages);
       newSocket.on('messageDelivered', handleMessageDelivered);
+      newSocket.on('messagesRead', handleMessagesRead);
+      newSocket.on('newUserRegistered', handleNewUserRegistered);
       
-      setSocket(newSocket);
-    }
-      
-    // Cleanup function
+      // Cleanup function
       return () => {
-      if (newSocket) {
         console.log('🔌 Cleaning up socket connection');
         // Remove event listeners to prevent memory leaks
         newSocket.off('receiveMessage', handleReceiveMessage);
         newSocket.off('loadMessages', handleLoadMessages);
         newSocket.off('messageDelivered', handleMessageDelivered);
+        newSocket.off('messagesRead', handleMessagesRead);
+        newSocket.off('newUserRegistered', handleNewUserRegistered);
         newSocket.disconnect();
-      }
-    };
-  }, [isAuthenticated, user]);
+      };
+    }
+  }, [isAuthenticated, user, selectedChatUser, currentUser, users, sortUsersByLastMessage, toast]);
 
   // Helper function for level colors
   const getLevelColor = (level: string) => {
@@ -1234,6 +1495,36 @@ const Index = () => {
                   <button className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 rounded-lg">
                     Archive 0
                   </button>
+                  <button 
+                    onClick={() => {
+                      // Manual refresh of users
+                      const loadUsers = async () => {
+                        try {
+                          const response = await fetch('/api/register.json');
+                          if (response.ok) {
+                            const usersData = await response.json();
+                            setUsers(usersData);
+                            const otherUsers = usersData.filter((userItem: any) => 
+                              userItem.id.toString() !== user?.id?.toString()
+                            );
+                            setSortedUsers(otherUsers);
+                            toast({
+                              title: "Users Refreshed",
+                              description: `Found ${usersData.length} users`,
+                              variant: "default"
+                            });
+                          }
+                        } catch (error) {
+                          console.error('Error refreshing users:', error);
+                        }
+                      };
+                      loadUsers();
+                    }}
+                    className="px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 rounded-lg border border-blue-200 hover:border-blue-300"
+                  >
+                    <RefreshCw className="w-4 h-4 inline mr-1" />
+                    Refresh
+                  </button>
                 </div>
                 <div className="relative">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
@@ -1378,6 +1669,20 @@ const Index = () => {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={loadChatMessages}
+                          disabled={isLoadingMessages}
+                          className="text-gray-400 hover:text-gray-600"
+                          title="Refresh Messages"
+                        >
+                          {isLoadingMessages ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-4 h-4" />
+                          )}
+                        </Button>
                         <Button variant="ghost" size="icon" className="text-gray-400 hover:text-gray-600">
                           <Phone className="w-5 h-5" />
                         </Button>
@@ -1400,12 +1705,15 @@ const Index = () => {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {chatMessages.map((message) => {
+                        {chatMessages.filter(message => message && message.id && message.content).map((message) => {
                           const isOwnMessage = currentUser?.id.toString() === message.senderId;
                           const messageTime = new Date(message.timestamp).toLocaleTimeString([], {
                             hour: '2-digit',
                             minute: '2-digit'
                           });
+                          
+                          // Check if message is being edited
+                          const isEditing = editingMessage?.id === message.id;
                           
                           return (
                             <div
@@ -1417,26 +1725,78 @@ const Index = () => {
                                   isOwnMessage
                                     ? 'bg-green-500 text-white'
                                     : 'bg-white text-gray-800 shadow-sm'
-                                }`}
+                                } ${message.deleted ? 'opacity-60' : ''}`}
+                                onContextMenu={(e) => handleMessageRightClick(e, message)}
                               >
-                                <div className="whitespace-pre-wrap break-words">{message.content}</div>
-                                <div className={`flex items-center justify-between mt-2 text-xs ${
-                                  isOwnMessage ? 'text-green-100' : 'text-gray-500'
-                                }`}>
-                                  <span>{messageTime}</span>
-                                  {isOwnMessage && (
-                                    <span className="ml-2">
-                                      {message.status === 'sending' && '⏳'}
-                                      {message.status === 'sent' && '✓'}
-                                      {message.status === 'delivered' && '✓✓'}
-                                      {message.status === 'read' && '✓✓'}
-                                    </span>
-                                  )}
-                                </div>
+                                {isEditing ? (
+                                  <div className="space-y-2">
+                                    <textarea
+                                      value={editingMessage.content}
+                                      onChange={(e) => setEditingMessage(prev => 
+                                        prev ? { ...prev, content: e.target.value } : null
+                                      )}
+                                      className={`w-full p-2 rounded border resize-none ${
+                                        isOwnMessage 
+                                          ? 'bg-green-400 text-white placeholder-green-200' 
+                                          : 'bg-gray-50 text-gray-800'
+                                      }`}
+                                      rows={2}
+                                      autoFocus
+                                    />
+                                    <div className="flex space-x-2">
+                                      <button
+                                        onClick={handleSaveEdit}
+                                        className={`px-3 py-1 rounded text-sm font-medium ${
+                                          isOwnMessage 
+                                            ? 'bg-green-600 text-white hover:bg-green-700' 
+                                            : 'bg-blue-500 text-white hover:bg-blue-600'
+                                        }`}
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        onClick={handleCancelEdit}
+                                        className={`px-3 py-1 rounded text-sm font-medium ${
+                                          isOwnMessage 
+                                            ? 'bg-gray-400 text-white hover:bg-gray-500' 
+                                            : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+                                        }`}
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="whitespace-pre-wrap break-words">
+                                      {message.deleted ? (
+                                        <span className="italic text-gray-500">This message was deleted</span>
+                                      ) : (
+                                        message.content
+                                      )}
+                                    </div>
+                                    <div className={`flex items-center justify-between mt-2 text-xs ${
+                                      isOwnMessage ? 'text-green-100' : 'text-gray-500'
+                                    }`}>
+                                      <span>{messageTime}</span>
+                                      {isOwnMessage && !message.deleted && (
+                                        <span className="ml-2">
+                                          {message.edited && '✏️ '}
+                                          {message.status === 'sending' && '⏳'}
+                                          {message.status === 'sent' && '✓'}
+                                          {message.status === 'delivered' && '✓✓'}
+                                          {message.status === 'read' && '✓✓'}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </>
+                                )}
                               </div>
                             </div>
                           );
                         })}
+                        {/* Scroll anchor for auto-scrolling to bottom */}
+                        <div ref={chatEndRef} className="h-1" />
                       </div>
                     )}
                   </div>
@@ -1482,6 +1842,47 @@ const Index = () => {
             </div>
           </div>
         </div>
+
+        {/* Context Menu */}
+        {contextMenu?.visible && (
+          <div
+            className="fixed z-[9999] bg-white rounded-lg shadow-lg border border-gray-200 py-1 min-w-[160px]"
+            style={{
+              left: contextMenu.x,
+              top: contextMenu.y,
+              transform: 'translate(-50%, -100%)'
+            }}
+          >
+            {/* Edit Option - Only show if message is less than 1 minute old */}
+            {isMessageEditable(contextMenu.message) && (
+              <button
+                onClick={() => handleEditMessage(contextMenu.message)}
+                className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2 transition-colors"
+              >
+                <Edit className="w-4 h-4" />
+                <span>Edit</span>
+              </button>
+            )}
+            
+            {/* Delete Option - Always visible */}
+            <button
+              onClick={() => handleDeleteMessage(contextMenu.message)}
+              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Delete</span>
+            </button>
+            
+            {/* Forward Option - Always visible */}
+            <button
+              onClick={() => handleForwardMessage(contextMenu.message)}
+              className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2 transition-colors"
+            >
+              <Forward className="w-4 h-4" />
+              <span>Forward</span>
+            </button>
+          </div>
+        )}
       </>
     );
   };
@@ -1981,6 +2382,8 @@ const Index = () => {
       </>
     );
   };
+
+
 
   const renderContent = () => {
     switch (currentView) {

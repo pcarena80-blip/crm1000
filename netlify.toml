@@ -1,6 +1,7 @@
 [build]
   publish = "dist"
   command = "npm run build"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "18"
@@ -11,10 +12,20 @@
   to = "/index.html"
   status = 200
 
-# Handle API routes
+# Handle API routes - redirect to Netlify functions
 [[redirects]]
-  from = "/api/*"
-  to = "/api/:splat"
+  from = "/api/login"
+  to = "/.netlify/functions/login"
+  status = 200
+
+[[redirects]]
+  from = "/api/logout"
+  to = "/.netlify/functions/logout"
+  status = 200
+
+[[redirects]]
+  from = "/api/user/*"
+  to = "/.netlify/functions/user"
   status = 200
 
 # Force all routes to index.html for SPA
@@ -37,3 +48,4 @@
   command = "npm run dev"
   port = 5173
   publish = "dist"
+  functions = "netlify/functions"
