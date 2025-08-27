@@ -1,0 +1,5 @@
+[33mc5e7742[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Add explicit functions configuration and test page for debugging
+[33m72ea4e9[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Simplify redirects and add function configuration to fix 404 errors
+[33mb01e05a[m CRITICAL FIX: Fix API URL generation to match Netlify redirects
+[33m2854a5b[m Fix MIME type issues for JavaScript modules by adding proper headers
+[33m155f78d[m Update Netlify redirects to use specific routes and add test function for debugging
