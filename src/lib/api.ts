@@ -10,9 +10,9 @@ const getApiUrl = (endpoint: string): string => {
     return `/${cleanEndpoint}`;
   }
   
-  // In production (Netlify), use the Netlify Functions path
-  // This handles the redirect from /api/* to /.netlify/functions/*
-  return `/${cleanEndpoint}`;
+  // In production (Netlify), use the API path without leading slash
+  // This matches the redirect pattern in netlify.toml
+  return cleanEndpoint;
 };
 
 // Generic fetch wrapper with proper URL handling
@@ -22,6 +22,7 @@ export const apiRequest = async (
 ): Promise<any> => {
   try {
     const url = getApiUrl(endpoint);
+    console.log('API request to:', url); // Debug log
     const response = await fetch(url, options);
     
     if (!response.ok) {
